@@ -83,6 +83,7 @@ describe("recording payments", () => {
       { method: "online" }, { method: "card" }, { method: "" }, { method: undefined },
       { receivedAt: "2026-05-05" }, { receivedAt: "2026-05-05T10:00:00" }, { receivedAt: "yesterday" }, { receivedAt: 1717000000 }, { receivedAt: "2026-13-05T10:00:00Z" }, { receivedAt: undefined },
       { slipPath: 42 }, { method: "cash", slipPath: `${ctx.nw}/x.png` },
+      { method: "bank_transfer" }, // a bank transfer needs a slip
     ];
     for (const over of bad) expect((await api(`/api/leases/${l.id}/payments`, { token: ctx.tok[MGR], body: { ...base, ...over } })).status, JSON.stringify(over)).toBe(400);
     expect((await api(`/api/leases/${l.id}/payments`, { token: ctx.tok[MGR], rawBody: "{oops", headers: { "content-type": "application/json" } })).status).toBe(400);

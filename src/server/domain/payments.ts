@@ -75,6 +75,7 @@ export async function recordPayment(db: Db, userId: string, leaseId: string, inp
   positiveSafeInt(input.amountSen, 'amountSen')
 
   let slipPath: string | undefined
+  if (input.method === 'bank_transfer' && input.slipPath === undefined) throw new HttpError(400, 'a bank transfer needs a slip (slipPath)')
   if (input.slipPath !== undefined) {
     if (input.method !== 'bank_transfer') throw new HttpError(400, 'only bank_transfer payments can carry a slip')
     slipPath = await validateSlip(db, lease.orgId, input.slipPath)
