@@ -1,0 +1,162 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css"; /* data-open / data-closed variants used by generated components */
+
+/*
+ * EzyFusion design tokens (Dark Premium palette). Variables live in :root and are
+ * registered under --color-* below; an unregistered token generates no utility.
+ * The product is dark-only (Dark Premium): :root holds the dark palette, there is no light variant.
+ */
+:root {
+  color-scheme: dark;
+  --background: #090e1a;
+  --foreground: #f1f5f9;
+  --card: #121b2b; /* surface */
+  --card-foreground: #f1f5f9;
+  --popover: #192438; /* elevated surface */
+  --popover-foreground: #f1f5f9;
+  --primary: #818cf8;
+  --primary-hover: #6366f1;
+  --primary-foreground: #0b1020; /* dark text on the light indigo: 6.9:1 */
+  --secondary: #192438;
+  --secondary-foreground: #f1f5f9;
+  --muted: #192438;
+  --muted-foreground: #94a3b8; /* secondary text, >= 6:1 on every surface */
+  --accent: #192438;
+  --accent-foreground: #f1f5f9;
+  --destructive: #fb7185;
+  --destructive-foreground: #1a0a10;
+  --border: #263348; /* decorative dividers */
+  --input: #5b6b86; /* control boundary, >= 3:1 on surface */
+  --ring: #818cf8;
+  --radius: 0.625rem; /* md 10px, lg 12px, xl 16px */
+
+  --sidebar: #0d1422;
+  --elevated: #192438;
+  --subtle-text: #64748b; /* muted text: placeholders and decoration only, never essential copy */
+
+  --success: #34d399;
+  --success-subtle: #10302a;
+  --success-subtle-foreground: #6ee7b7;
+  --warning: #fbbf24;
+  --warning-subtle: #332a12;
+  --warning-subtle-foreground: #fcd34d;
+  --destructive-subtle: #38182a;
+  --destructive-subtle-foreground: #fda4af;
+  --info-subtle: #1f2550;
+  --info-subtle-foreground: #c7d2fe;
+  --muted-foreground-strong: #a9b6c9; /* secondary text that must stay prominent */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-foreground: var(--success-subtle-foreground);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-foreground: var(--warning-subtle-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-foreground: var(--info-subtle-foreground);
+  --color-muted-foreground-strong: var(--muted-foreground-strong);
+  --color-primary-hover: var(--primary-hover);
+  --color-sidebar: var(--sidebar);
+  --color-elevated: var(--elevated);
+  --color-subtle-text: var(--subtle-text);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-4xl: 9999px;
+
+  --font-sans: var(--font-geist-sans);
+  --font-heading: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border); /* Tailwind v4 defaults to currentColor */
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+  /* Sticky header must not hide focused elements (WCAG 2.4.11) */
+  :target,
+  :focus-visible {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+/*
+ * Shared interaction styles.
+ * focus-ring  : keyboard-only (:focus-visible) solid 2px outline for buttons, links, icon buttons.
+ * field-control: Input / Select trigger / DatePicker trigger. 40px tall, full width, one shared
+ *                border, hover, invalid, disabled and focus treatment. Focus changes the single
+ *                border to the primary colour and adds a soft 2px halo (outline, so it also
+ *                survives forced-colors mode); no box-shadow and no second border.
+ */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Financial figures line up in columns. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+@utility field-control {
+  @apply h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground;
+  @apply md:text-sm;
+  @apply transition-[border-color,outline-color];
+  @apply hover:border-muted-foreground-strong;
+  @apply focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-ring/30 focus-visible:outline-offset-0;
+  @apply data-popup-open:border-ring;
+  @apply aria-invalid:border-destructive aria-invalid:focus-visible:outline-destructive/30;
+  @apply disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60 disabled:hover:border-input;
+  @apply data-disabled:cursor-not-allowed data-disabled:bg-muted data-disabled:opacity-60 data-disabled:hover:border-input;
+}
+
+/* Honour reduced-motion: unlayered, so it wins over Tailwind's layered utilities without !important. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+  }
+}

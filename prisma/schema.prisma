@@ -1,0 +1,191 @@
+// Mirrors supabase/migrations/*.sql. The SQL migrations are the ONLY source of schema changes:
+// never run Prisma Migrate (migrate dev/deploy/reset) or `db push`; this file is verified against the database
+// with `npm run db:check`.
+//
+// SECURITY: Prisma connects as the database owner (postgres), which BYPASSES RLS. Every server-side query must be
+// authorized in application code (verified Supabase user -> membership / tenant row -> organization scope).
+// Foreign keys to auth.users (memberships.user_id, tenants.user_id) exist in SQL but are not modelled here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String
+
+  memberships        Membership[]
+  units              Unit[]
+  tenants            Tenant[]
+  leases             Lease[]
+  invoices           Invoice[]
+  payments           Payment[]
+  paymentAllocations PaymentAllocation[]
+  gatewayBills       GatewayBill[]
+  auditLogs          AuditLog[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  userId String @map("user_id") @db.Uuid
+  orgId  String @map("org_id") @db.Uuid
+  role   String
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@id([userId, orgId])
+  @@index([orgId])
+  @@map("memberships")
+}
+
+model Unit {
+  id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId String @map("org_id") @db.Uuid
+  name  String
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  leases       Lease[]
+
+  @@unique([id, orgId])
+  @@unique([orgId, name])
+  @@map("units")
+}
+
+model Tenant {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId    String  @map("org_id") @db.Uuid
+  userId   String? @map("user_id") @db.Uuid
+  fullName String  @map("full_name")
+  email    String
+  phone    String?
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  leases       Lease[]
+
+  @@unique([id, orgId])
+  @@unique([orgId, email])
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@map("tenants")
+}
+
+model Lease {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId          String   @map("org_id") @db.Uuid
+  unitId         String   @map("unit_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime @map("end_date") @db.Date
+  monthlyRentSen BigInt   @map("monthly_rent_sen")
+  depositSen     BigInt   @default(0) @map("deposit_sen")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  unit         Unit         @relation(fields: [unitId, orgId], references: [id, orgId])
+  tenant       Tenant       @relation(fields: [tenantId, orgId], references: [id, orgId])
+  invoices     Invoice[]
+  payments     Payment[]
+  gatewayBills GatewayBill[]
+
+  @@unique([id, orgId])
+  @@index([orgId])
+  @@index([tenantId])
+  @@index([unitId])
+  @@map("leases")
+}
+
+model Invoice {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String    @map("org_id") @db.Uuid
+  leaseId     String    @map("lease_id") @db.Uuid
+  kind        String
+  periodIndex Int?      @map("period_index")
+  periodStart DateTime? @map("period_start") @db.Date
+  periodEnd   DateTime? @map("period_end") @db.Date
+  dueDate     DateTime  @map("due_date") @db.Date
+  amountSen   BigInt    @map("amount_sen")
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  lease        Lease               @relation(fields: [leaseId, orgId], references: [id, orgId])
+  allocations  PaymentAllocation[]
+
+  @@unique([id, orgId])
+  @@unique([leaseId, periodIndex])
+  @@index([orgId, dueDate])
+  @@map("invoices")
+}
+
+model GatewayBill {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String @map("org_id") @db.Uuid
+  leaseId   String @map("lease_id") @db.Uuid
+  amountSen BigInt @map("amount_sen")
+  status    String
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  lease        Lease        @relation(fields: [leaseId, orgId], references: [id, orgId])
+  payments     Payment[] // at most one in practice: payments.gateway_bill_id is UNIQUE in SQL
+
+  @@unique([id, orgId])
+  @@index([leaseId])
+  @@map("gateway_bills")
+}
+
+model Payment {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  leaseId       String   @map("lease_id") @db.Uuid
+  amountSen     BigInt   @map("amount_sen")
+  unappliedSen  BigInt   @map("unapplied_sen")
+  method        String
+  status        String
+  receivedAt    DateTime @map("received_at") @db.Timestamptz(6)
+  slipPath      String?  @map("slip_path")
+  gatewayBillId String?  @unique @map("gateway_bill_id") @db.Uuid
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  lease        Lease               @relation(fields: [leaseId, orgId], references: [id, orgId])
+  gatewayBill  GatewayBill?        @relation(fields: [gatewayBillId, orgId], references: [id, orgId])
+  allocations  PaymentAllocation[]
+
+  @@unique([id, orgId])
+  @@index([leaseId])
+  @@index([orgId, receivedAt])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String @map("org_id") @db.Uuid
+  paymentId String @map("payment_id") @db.Uuid
+  invoiceId String @map("invoice_id") @db.Uuid
+  amountSen BigInt @map("amount_sen")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  payment      Payment      @relation(fields: [paymentId, orgId], references: [id, orgId])
+  invoice      Invoice      @relation(fields: [invoiceId, orgId], references: [id, orgId])
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  actorId   String?  @map("actor_id") @db.Uuid
+  action    String
+  entityId  String?  @map("entity_id") @db.Uuid
+  details   Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@map("audit_log")
+}
