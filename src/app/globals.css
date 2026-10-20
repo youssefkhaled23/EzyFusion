@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css"; /* data-open / data-closed variants used by generated components */
 
+/* Tailwind scans every file for class names. The exported AI transcript is escaped JSON whose text looks like broken
+   classes and makes the Turbopack dev CSS parser fail, so that folder is excluded. */
+@source not "../../ai-logs";
+
 /*
  * EzyFusion design tokens (Dark Premium palette). Variables live in :root and are
  * registered under --color-* below; an unregistered token generates no utility.
